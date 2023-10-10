@@ -16,26 +16,31 @@ async function sleep(ms) {
 
 async function getChains() {
   const chains = [];
-  const browser = await playwright["firefox"].launch({
-    headless: true,
-  });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto(url, {
-    waitUntil: "domcontentloaded",
-  });
+  try {
+    const browser = await playwright["firefox"].launch({
+      headless: true,
+    });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+    });
 
-  await page.waitForSelector('[data-type="text-with-sub-text"]');
-  const cells = await page.$$('[data-type="text-with-sub-text"]');
+    await page.waitForSelector('[data-type="text-with-sub-text"]');
+    const cells = await page.$$('[data-type="text-with-sub-text"]');
 
-  for (const cell of cells) {
-    const chain = await cell.$(".text");
-    if (chain) {
-      const text = await chain.innerText();
-      chains.push(text.toLowerCase().replaceAll(/[. ]/gi, "-"));
+    for (const cell of cells) {
+      const chain = await cell.$(".text");
+      if (chain) {
+        const text = await chain.innerText();
+        chains.push(text.toLowerCase().replaceAll(/[. ]/gi, "-"));
+      }
     }
+    await browser.close();
+    return chains;
+  } catch (err) {
+    return chains;
   }
-  return chains;
 }
 
 async function main() {
@@ -50,15 +55,11 @@ async function main() {
         const browser = await playwright["firefox"].launch({
           headless: false,
         });
-
         const context = await browser.newContext();
-
         const page = await context.newPage();
-
         await page.goto(url + `/${chain}/address/${address}`, {
           waitUntil: "domcontentloaded",
         });
-
         await page.waitForFunction(
           () => document.querySelectorAll("[data-data-table]").length > 1
         );
@@ -74,7 +75,7 @@ async function main() {
 
           for (const tx of transactions) {
             const href = await tx.getAttribute("href");
-            if (href.startsWith("/cosmos/tx")) {
+            if (href.startsWith(`/${chain}/tx`)) {
               const pagePromise = context.waitForEvent("page");
               await tx.click();
               const newPage = await pagePromise;

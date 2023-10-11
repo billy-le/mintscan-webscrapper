@@ -15,7 +15,7 @@ async function sleep(ms) {
 }
 
 async function getChains() {
-  const chains = [];
+  const chains = new Set();
   try {
     const browser = await playwright["firefox"].launch({
       headless: true,
@@ -27,19 +27,20 @@ async function getChains() {
     });
 
     await page.waitForSelector('[data-type="text-with-sub-text"]');
-    const cells = await page.$$('[data-type="text-with-sub-text"]');
-
-    for (const cell of cells) {
-      const chain = await cell.$(".text");
-      if (chain) {
-        const text = await chain.innerText();
-        chains.push(text.toLowerCase().replaceAll(/[. ]/gi, "-"));
+    const table = await page.$('[data-data-table=""]');
+    const links = await table.$$(
+      '[data-ellipse="false"][data-disable="false"]'
+    );
+    for (const link of links) {
+      const href = await link.getAttribute("href");
+      if (href) {
+        chains.add(href.replaceAll(/\//gi, ""));
       }
     }
     await browser.close();
-    return chains;
+    return Array.from(chains).sort((a, b) => a.localeCompare(b));
   } catch (err) {
-    return chains;
+    return Array.from(chains);
   }
 }
 
